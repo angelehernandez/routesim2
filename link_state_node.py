@@ -15,6 +15,7 @@ class Link_State_Node(Node):
         self.routeTable = {}
         self.costTable = {}
         self.recentlySeenSeq = {}
+        self.D = {}
 
 
     # Return a string
@@ -24,7 +25,16 @@ class Link_State_Node(Node):
     # Fill in this function
     def link_has_been_updated(self, neighbor, latency):
         # latency = -1 if delete a link
-        
+        if latency == -1:
+            self.neighbors.remove(neighbor)
+            key = frozenset([self.id, neighbor])
+            seq = self.costTable[key][1]
+            del self.costTable[key]
+            message = [self.id, neighbor, latency, seq+1, self.id]
+            message = json.dumps(message)
+            self.send_to_neighbors(message)
+            return
+            
         if neighbor not in self.neighbors:
             self.neighbors.append(neighbor)
             for key in self.costTable:
@@ -47,9 +57,7 @@ class Link_State_Node(Node):
         message = json.dumps(message)
         for n in self.neighbors:
             self.send_to_neighbor(n, message)
-            if((self.id == 4 and neighbor == 6) or (self.id == 6 and neighbor == 4)):
-                print("JKLM")
-                print(self.neighbors)
+            
 
 
 
@@ -61,21 +69,22 @@ class Link_State_Node(Node):
         cost = mess[2]
         seq = mess[3]
         og = mess[4]
+        if cost == -1:
+            message = [source, dest, cost, seq, self.id]
+            message = json.dumps(message)
+            if(self.costTable.pop(frozenset([source, dest]), None)):
+                for n in self.neighbors:
+                        if n != og:
+                            #print("Sending information about " + str(dest) + " " + str(source) + " to " + str(n))
+                            self.send_to_neighbor(n, message)
+            return
         
-        print("CURRENT ID: " + str(self.id))
-        print("source: " + str(source) + " destination: " + str(dest) + " seq: " + str(seq))
-        print(self.costTable)
-        if(dest == 6 and source == 4) or ((source == 6 and dest == 4)):
-            print("GOT IT: " + str(self.id))
-            print("New Sequence " + str(seq))
-            if frozenset([source, dest]) in self.costTable:
-                print("WE KNOW ABOUT IT ALREADY")
-                print("Sequence Number we Have: " + str(self.costTable[frozenset([source, dest])]))
-            print("These are our neighbors: ")
-            print(self.neighbors)
+        #print("CURRENT ID: " + str(self.id))
+        #print("source: " + str(source) + " destination: " + str(dest) + " seq: " + str(seq))
+        #print(self.costTable)
         if frozenset([source, dest]) in self.costTable:
             seq2 = self.costTable[frozenset([source, dest])][1]
-            print(seq2)
+            #print(seq2)
         else:
             seq2 = seq
         #print("received seq " + str(seq2) + " for the link of " + str(source) + "  " + str(dest))
@@ -83,33 +92,36 @@ class Link_State_Node(Node):
         #print("source: " + str(source) + " destination: " + str(dest) + " seq: " + str(seq))
         #print("current sequence: " + str(self.recentlySeenSeq))
         if frozenset([source, dest]) in self.costTable:
-            print('we know about this link already')
+            seq2 = self.costTable[frozenset([source, dest])][1]
+            #print('we know about this link already')
             if seq2 < seq:
-                print('The seq number ' + str(seq) + ' is greater than ' + str(seq2))
+                #print('The seq number ' + str(seq) + ' is greater than ' + str(seq2))
                 key = frozenset([source,dest])
-                self.costTable[key] = [cost, seq2]
-                message = [source, dest, cost, seq2, self.id]
+                self.costTable[key] = [cost, seq]
+                message = [source, dest, cost, seq, self.id]
                 message = json.dumps(message)
-                print("Sending to these neighbors now")
-                print(self.neighbors)
+                #print("Sending to these neighbors now")
+                #print(self.neighbors)
                 for n in self.neighbors:
                     if n != og:
-                        print("Sending information about " + str(dest) + " " + str(source) + " to " + str(n))
+                        #print("Sending information about " + str(dest) + " " + str(source) + " to " + str(n))
                         self.send_to_neighbor(n, message)
             elif seq2 > seq:
-                print("recieved older sequence")
-                message = [source, dest, cost, seq, self.id]
+                #print("recieved older sequence")
+                #print("Recieved sequence cost " + str(cost))
+                #print("Sequence cost we have " + str(self.costTable[frozenset([source, dest])]))
+                message = [source, dest, cost, seq2, self.id]
                 message = json.dumps(message)
                 self.send_to_neighbor(og, message)
         else:
-            print("this is a new link")
+            #print("this is a new link")
             key = frozenset([source,dest])
             self.costTable[key] = [cost, seq2]
             message = [source, dest, cost, seq2, self.id]
             message = json.dumps(message)
             for n in self.neighbors:
                 if n != og:
-                    print("Sending information about " + str(dest) + " " + str(source) + " to " + str(n))
+                    #print("Sending information about " + str(dest) + " " + str(source) + " to " + str(n))
                     self.send_to_neighbor(n, message)
         #time.sleep(1)
 
@@ -127,33 +139,38 @@ class Link_State_Node(Node):
 
     # Return a neighbor, -1 if no path to destination
     def get_next_hop(self, destination):
-        print(self.id)
-        print(self.costTable)
+        #print(self.id)
+        #print(self.costTable)
         #print("Costs before running")
         #print(self.costTable)
-        D = self.dijRun()
+        self.D = self.dijRun()
+        
         #print(D)
-        currPrev = D[destination][1]
+        currPrev = self.D[destination][1]
         if currPrev == self.id:
+            #print(str(currPrev) + " is equal to " + str(self.id))
+            #print("RETURNED " + str(currPrev))
             return destination
-        #print("destination " + str(destination))
-        while currPrev not in self.neighbors:
+        nextPrev = self.D[currPrev][1]
+        while nextPrev != self.id:
             #print("Curr prev: " + str(currPrev))
             #print(self.neighbors)
+            currPrev = nextPrev
+            nextPrev = self.D[currPrev][1]
             #print(currPrev)
             #print(D)
-            currPrev = D[currPrev][1]
-        print("RETURNED" + str(currPrev))
+            
+        #print("RETURNED " + str(currPrev))
         return currPrev
 
             
 
 
     def dijRun(self):
-        
+        #print("NEW DJI RUN")
         #print(self.id)
         #print(self.neighbors)
-        print(self.costTable)
+        #print(self.costTable)
         D = {}
         #print(self.neighbors)
         N = [self.id]
@@ -184,18 +201,23 @@ class Link_State_Node(Node):
                     D[tempKeys[0]] = [math.inf, None]
                 elif tempKeys[1] not in list(D.keys()):
                     D[tempKeys[1]] = [math.inf, None]
-
+        
+        #print("D after intialization")
+        #print(D)
         #print(len(self.costTable))
         while len(N) < len(self.costTable):
             minimum = math.inf
+            #print("LOOPED")
             #print(self.costTable)
             for item in D:
                 if D[item][0] < minimum and item not in N:
                     w = item
                     minimum = D[item][0]
             N.append(w)
+            #print("examing " + str(w))
             #print(N)
             for keys in self.costTable:
+                #print(D)
                 tempKeys = list(keys)
                 if w in tempKeys:
                     if tempKeys[0] == w:
