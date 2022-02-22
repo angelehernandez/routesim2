@@ -2,7 +2,6 @@ import math
 import time
 import random
 
-from torch import minimum, ne
 from simulator.node import Node
 import json
 import copy
