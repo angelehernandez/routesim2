@@ -4,6 +4,10 @@ This is a simple network routing simulator written in Python.  It was primarily 
 
 This code is the basis for a programming project for Northwestern's University's EECS-340 Introduction to Computer Networking.
 
+### Student README section
+This code was developed by David Marquette (dmm6247) and Angel Hernandez (aeh5258) from group David/Angel in Canvas.
+Code for both files were written by David along with Angel during partner debugging session via Zoom. David also wrote much code individually, and Angel completed testing via remote ssh sesssions on moore.
+
 ### Prerequisites:
 
 This code is written for Python 3 and it was tested on version 3.5.  Run the following to install the two required packages:
